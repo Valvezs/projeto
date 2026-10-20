@@ -1,0 +1,201 @@
+{
+  "dataset": "NSL-KDD KDDTrain+",
+  "sha256": "1b86d2f957b33082081bba410fe129b475efebcc13c9014c3f447c8271aadf95",
+  "train": 94479,
+  "test": 31494,
+  "attacks_test": 14658,
+  "seed": 42,
+  "environment": {
+    "python": "3.12.14",
+    "sklearn": "1.8.0",
+    "xgboost": "3.4.1",
+    "pandas": "2.2.3",
+    "numpy": "2.3.5",
+    "platform": "Linux-6.18.55-x86_64-with-glibc2.39"
+  },
+  "models": [
+    {
+      "name": "Árvore de Decisão",
+      "accuracy": 0.9979043627357592,
+      "precision": 0.9970704455647909,
+      "recall": 0.9984308909810342,
+      "f1": 0.9977502045268611,
+      "matrix": [
+        [
+          16793,
+          43
+        ],
+        [
+          23,
+          14635
+        ]
+      ],
+      "fit_s": 0.7983445309999979,
+      "search_s": 3.798242596000023,
+      "single_ms": 1.332306500046343,
+      "p95_ms": 1.548438950027275,
+      "batch_ms": 0.0009590227662418476,
+      "cv_f1": 0.9968722639718844,
+      "params": {
+        "model__max_depth": 12,
+        "model__min_samples_leaf": 5
+      },
+      "importance": [
+        {
+          "feature": "remainder__4",
+          "value": 0.7441396395714995
+        },
+        {
+          "feature": "cat__2_ecr_i",
+          "value": 0.07587461367469386
+        },
+        {
+          "feature": "cat__2_http",
+          "value": 0.05656597828342472
+        },
+        {
+          "feature": "remainder__33",
+          "value": 0.030348073853847902
+        },
+        {
+          "feature": "remainder__5",
+          "value": 0.02210014581122699
+        },
+        {
+          "feature": "remainder__9",
+          "value": 0.02173409852264133
+        },
+        {
+          "feature": "cat__2_ftp_data",
+          "value": 0.009971587956909521
+        },
+        {
+          "feature": "remainder__11",
+          "value": 0.009709120952655468
+        }
+      ]
+    },
+    {
+      "name": "Random Forest",
+      "accuracy": 0.9986346605702674,
+      "precision": 0.9992484798797567,
+      "recall": 0.9978168917996998,
+      "f1": 0.9985321727257211,
+      "matrix": [
+        [
+          16825,
+          11
+        ],
+        [
+          32,
+          14626
+        ]
+      ],
+      "fit_s": 4.663618170000063,
+      "search_s": 20.923085258000015,
+      "single_ms": 3.7907795000364786,
+      "p95_ms": 5.205347499969546,
+      "batch_ms": 0.004337691369787252,
+      "cv_f1": 0.9978820835299329,
+      "params": {
+        "model__max_depth": null,
+        "model__min_samples_leaf": 2
+      },
+      "importance": [
+        {
+          "feature": "remainder__4",
+          "value": 0.15885034636169043
+        },
+        {
+          "feature": "cat__3_SF",
+          "value": 0.09013646110475595
+        },
+        {
+          "feature": "remainder__33",
+          "value": 0.08882097638190403
+        },
+        {
+          "feature": "remainder__5",
+          "value": 0.05396745471932089
+        },
+        {
+          "feature": "remainder__32",
+          "value": 0.04929415734881323
+        },
+        {
+          "feature": "remainder__38",
+          "value": 0.03558676372541307
+        },
+        {
+          "feature": "remainder__22",
+          "value": 0.03353151123304811
+        },
+        {
+          "feature": "remainder__25",
+          "value": 0.032306208353294515
+        }
+      ]
+    },
+    {
+      "name": "XGBoost",
+      "accuracy": 0.9988569251285959,
+      "precision": 0.9989081479459533,
+      "recall": 0.9986355573748124,
+      "f1": 0.9987718340611353,
+      "matrix": [
+        [
+          16820,
+          16
+        ],
+        [
+          20,
+          14638
+        ]
+      ],
+      "fit_s": 2.100975594999909,
+      "search_s": 10.025624171000004,
+      "single_ms": 1.5554374999737774,
+      "p95_ms": 1.9960777500557467,
+      "batch_ms": 0.0018867193116147633,
+      "cv_f1": 0.9984187758801308,
+      "params": {
+        "model__learning_rate": 0.1,
+        "model__max_depth": 6
+      },
+      "importance": [
+        {
+          "feature": "cat__2_ecr_i",
+          "value": 0.2830202281475067
+        },
+        {
+          "feature": "remainder__4",
+          "value": 0.2392393797636032
+        },
+        {
+          "feature": "cat__2_http",
+          "value": 0.12597790360450745
+        },
+        {
+          "feature": "remainder__7",
+          "value": 0.04623636230826378
+        },
+        {
+          "feature": "remainder__11",
+          "value": 0.03724057227373123
+        },
+        {
+          "feature": "remainder__9",
+          "value": 0.035744424909353256
+        },
+        {
+          "feature": "remainder__33",
+          "value": 0.03062303736805916
+        },
+        {
+          "feature": "remainder__5",
+          "value": 0.02323126047849655
+        }
+      ]
+    }
+  ]
+}

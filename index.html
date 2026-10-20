@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description"
+        content="Um experimento reproduzível de detecção de intrusões: Árvore de Decisão, Random Forest e XGBoost com NSL-KDD.">
+    <title>Preditor de Redes — Uma árvore basta?</title>
+    <link rel="stylesheet" href="dist/style.css">
+    <script src="dist/app.js" defer></script>
+</head>
+
+<body><a class="skip" href="#problema">Ir ao conteúdo</a>
+    <header><a class="brand" href="#">↗ PREDITOR / REDES</a>
+        <nav aria-label="Índice"><a href="#problema">O problema</a><a href="#modelos">Modelos</a><a
+                href="#metodo">Experimento</a><a href="#resultados">Resultados</a><a href="#conclusao">Veredito</a>
+        </nav>
+    </header>
+    <main>
+        <div class="hero">
+            <div><span class="pill">ARTIGO TÉCNICO · APRENDIZADO DE MÁQUINA</span>
+                <h1>Uma árvore<br>basta para<br><em>proteger a rede?</em></h1>
+                <p class="lead">Vamos comparar Árvore de Decisão, Random Forest e XGBoost para identificar conexões
+                    maliciosas. Mesmo teste. Três estratégias. Uma escolha baseada em evidências.</p>
+                <div class="author-inline"><img src="images/victor-gabriel-alves.jpg" alt="Foto de Victor Gabriel Alves"
+                        width="48" height="48"><span>Por <a href="#autoria">Victor Gabriel Alves</a><br><small>Ciência
+                            da Computação · 3º semestre</small></span></div><a class="button"
+                    href="#resultados">Explorar os resultados ↗</a><a class="button secondary" href="projeto.zip"
+                    download>Baixar código ↓</a>
+            </div>
+            <div class="visual">
+                <div class="eyebrow">Do fluxo ao alerta</div><svg viewBox="0 0 400 320" role="img"
+                    aria-labelledby="tree-title">
+                    <title id="tree-title">Exemplo didático: uma conexão passa por perguntas sobre erros e serviço até
+                        receber uma classificação normal ou suspeita. Não representa a árvore treinada.</title>
+                    <g stroke="#cce98c" fill="none" stroke-width="2">
+                        <path d="M200 65V105M200 105H95V145M200 105H305V145M95 190V230M305 190V230" />
+                    </g>
+                    <g fill="#214849" stroke="#cce98c">
+                        <rect x="118" y="20" width="164" height="50" rx="8" />
+                        <rect x="20" y="145" width="150" height="45" rx="8" />
+                        <rect x="230" y="145" width="150" height="45" rx="8" />
+                        <rect x="20" y="230" width="150" height="50" rx="8" />
+                        <rect x="230" y="230" width="150" height="50" rx="8" />
+                    </g>
+                    <g fill="#edf8df" font-family="monospace" font-size="13" text-anchor="middle"><text x="200"
+                            y="50">Muitos erros SYN?</text><text x="95" y="172">Sim → investigar</text><text x="305"
+                            y="172">Não → serviço?</text><text x="95" y="260">⚑ Suspeita</text><text x="305" y="260">✓
+                            Normal</text></g>
+                </svg>
+                <p>FIG. 01 / Perguntas simples, decisões sucessivas.<br>Exemplo ilustrativo, sem regras extraídas do
+                    experimento.</p>
+            </div>
+        </div>
+        <div class="strip">
+            <div><b>03</b><span>ALGORITMOS COMPARADOS</span></div>
+            <div><b>42</b><span>SEMENTE ALEATÓRIA</span></div>
+            <div><b>25%</b><span>DADOS RESERVADOS PARA TESTE</span></div>
+            <div><b>F1</b><span>CRITÉRIO DE SELEÇÃO</span></div>
+        </div>
+        <section id="problema">
+            <div class="sectionhead"><span class="num">01 /</span>
+                <h2>Uma conexão merece um alerta?</h2>
+            </div>
+            <div class="two">
+                <div>
+                    <p>Vamos imaginar o monitoramento de uma rede com roteadores e switches. Queremos classificar cada
+                        conexão como <strong>normal (0)</strong> ou <strong>ataque (1)</strong>. Aprendizado
+                        supervisionado significa aprender essa distinção com exemplos que já têm uma resposta conhecida.
+                    </p>
+                    <p>Usamos a <a href="https://www.unb.ca/cic/datasets/nsl.html">NSL-KDD [1]</a>, uma base pública de
+                        conexões com 41 atributos. Ela é histórica: serve para comparar métodos, mas não demonstra
+                        proteção contra ameaças atuais.</p>
+                </div>
+                <div>
+                    <h3>Do modelo OSI aos atributos</h3>
+                    <p><code>protocol_type</code> descreve o protocolo; <code>service</code>, o serviço;
+                        <code>src_bytes</code> e <code>dst_bytes</code>, o volume nos dois sentidos;
+                        <code>serror_rate</code>, a proporção de conexões com erros SYN em uma janela.</p>
+                    <p>Vamos trabalhar com registros de conexões, não inspecionar pacotes em um equipamento Cisco. Não
+                        usamos IPs reais nem capturas confidenciais.</p>
+                </div>
+            </div>
+            <aside class="note"><strong>Um exemplo pequeno.</strong> Considere conexões com poucos bytes de resposta e
+                muitos erros de estabelecimento. Esse padrão pode motivar uma investigação, mas não prova um ataque:
+                falhas legítimas também acontecem.</aside>
+        </section>
+        <section id="modelos">
+            <div class="sectionhead"><span class="num">02 /</span>
+                <h2>Três maneiras de aprender a decidir</h2>
+            </div>
+            <div class="grid">
+                <article class="card"><span class="eyebrow">Uma sequência de perguntas</span>
+                    <h3>Árvore de Decisão</h3>
+                    <div class="diagram" role="img"
+                        aria-label="Uma pergunta se divide em sim e não, levando a decisões">Pergunta<br>↙ sim &nbsp;
+                        não ↘<br>Normal &nbsp; Ataque</div>
+                    <p>Vamos dividir os exemplos com perguntas sobre os atributos até chegar a uma folha, o resultado
+                        final. A árvore escolhe divisões que tornam os grupos mais homogêneos.</p>
+                    <p><strong>Quando usar:</strong> precisamos explicar regras e responder rapidamente.
+                        <strong>Limite:</strong> pequenas mudanças no treino podem mudar a árvore. Overfitting, ou
+                        sobreajuste, ocorre quando ela memoriza detalhes do treino e perde capacidade de generalizar.
+                        Limitamos a profundidade para reduzir esse risco. <a
+                            href="https://scikit-learn.org/stable/modules/tree.html">[2]</a></p>
+                </article>
+                <article class="card"><span class="eyebrow">Diversidade em paralelo</span>
+                    <h3>Random Forest</h3>
+                    <div class="diagram" role="img"
+                        aria-label="Amostras diferentes alimentam três árvores independentes e suas probabilidades são agregadas">
+                        Amostras A / B / C<br>↓ &nbsp; ↓ &nbsp; ↓<br>Árvore · Árvore · Árvore<br>↘ Agregação ↙</div>
+                    <p>Bagging é treinar modelos em amostras sorteadas com reposição e combinar suas respostas. A
+                        floresta também sorteia atributos em cada divisão. As árvores são independentes e podem ser
+                        treinadas em paralelo.</p>
+                    <p><strong>Quando usar:</strong> queremos robustez em dados tabulares. A agregação reduz a
+                        variância, isto é, a sensibilidade às mudanças na amostra. A ideia é uma votação; no
+                        scikit-learn, a classificação usa a média das probabilidades das árvores. Muitas árvores custam
+                        mais memória e inferência. <a
+                            href="https://scikit-learn.org/1.8/modules/generated/sklearn.ensemble.RandomForestClassifier.html">[3]</a>
+                    </p>
+                </article>
+                <article class="card"><span class="eyebrow">Correção em sequência</span>
+                    <h3>XGBoost</h3>
+                    <div class="diagram" role="img"
+                        aria-label="Uma árvore inicia a previsão, a segunda corrige os erros e a terceira refina o resultado">
+                        Árvore 1 → Árvore 2<br>↓ corrigir o erro ↓<br>Árvore 3 → Soma</div>
+                    <p>Boosting é adicionar modelos em sequência para melhorar os erros do conjunto atual. No XGBoost,
+                        cada árvore aprende correções guiadas pela função de perda, que mede o quanto erramos.</p>
+                    <p><strong>Quando usar:</strong> buscamos bom desempenho em tabelas e podemos ajustar parâmetros.
+                        Regularização é penalizar complexidade para conter sobreajuste. A taxa de aprendizado limita o
+                        peso de cada correção. A interpretação exige olhar o conjunto, não uma regra isolada. <a
+                            href="https://arxiv.org/abs/1603.02754">[4]</a></p>
+                </article>
+            </div>
+            <div class="scroll">
+                <table>
+                    <caption>Comparação conceitual</caption>
+                    <thead>
+                        <tr>
+                            <th>Critério</th>
+                            <th>Árvore</th>
+                            <th>Random Forest</th>
+                            <th>XGBoost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Mecanismo</td>
+                            <td>Divisões sucessivas</td>
+                            <td>Árvores independentes e agregação</td>
+                            <td>Correções sequenciais</td>
+                        </tr>
+                        <tr>
+                            <td>Vantagem</td>
+                            <td>Regras legíveis</td>
+                            <td>Menor sensibilidade à amostra</td>
+                            <td>Correções com regularização</td>
+                        </tr>
+                        <tr>
+                            <td>Desvantagem</td>
+                            <td>Instabilidade</td>
+                            <td>Mais memória e consultas a árvores</td>
+                            <td>Mais parâmetros para ajustar</td>
+                        </tr>
+                        <tr>
+                            <td>Interpretação</td>
+                            <td>Alta quando rasa</td>
+                            <td>Conjunto menos transparente</td>
+                            <td>Conjunto menos transparente</td>
+                        </tr>
+                        <tr>
+                            <td>Treino</td>
+                            <td>Uma árvore</td>
+                            <td>Paralelizável entre árvores</td>
+                            <td>Sequencial entre rodadas</td>
+                        </tr>
+                        <tr>
+                            <td>Sobreajuste</td>
+                            <td>Alto sem limitar profundidade</td>
+                            <td>Reduzido pela diversidade; possível</td>
+                            <td>Possível; controlar profundidade e penalidades</td>
+                        </tr>
+                        <tr>
+                            <td>Cenário</td>
+                            <td>Auditoria e simplicidade</td>
+                            <td>Robustez tabular</td>
+                            <td>Desempenho tabular com ajuste</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="small">Depois da intuição, a fórmula: previsão do boosting = soma das contribuições das árvores;
+                objetivo = erro das previsões + penalidade de complexidade.</p>
+        </section>
+        <section id="metodo">
+            <div class="sectionhead"><span class="num">03 /</span>
+                <h2>Um experimento que podemos repetir</h2>
+            </div>
+            <p>Usamos todos os registros do arquivo KDDTrain+. A divisão aleatória estratificada preserva a proporção
+                das classes: 75% para treino e 25% para teste, com semente 42. Não utilizamos o KDDTest+ oficial; nossos
+                números são de um teste interno e não devem ser comparados diretamente com estudos que usam a divisão
+                oficial.</p>
+            <ol>
+                <li><strong>Separar antes de transformar.</strong> Retiramos o rótulo e a coluna de dificuldade.
+                    Mantemos os mesmos 41 atributos nos três modelos.</li>
+                <li><strong>Preparar dentro de cada rodada.</strong> One-hot encoding transforma categorias em colunas
+                    binárias. O Pipeline ajusta essa transformação somente no treino de cada rodada; categorias
+                    desconhecidas são ignoradas.</li>
+                <li><strong>Ajustar sem olhar o teste.</strong> Validação cruzada estratificada divide o treino em três
+                    partes, alternando a parte usada para avaliar. Testamos dois candidatos por modelo e selecionamos o
+                    maior F1 médio. Hiperparâmetros são configurações escolhidas antes do treino, como profundidade e
+                    número de árvores.</li>
+                <li><strong>Congelar e avaliar.</strong> Treinamos a configuração escolhida com todo o treino, usamos o
+                    teste retido e medimos inferência após aquecimento. A busca é pequena, com orçamento igual de
+                    candidatos; não pretendemos esgotar o potencial dos algoritmos.</li>
+            </ol>
+            <pre class="code"><code># Mesma divisão para todos os modelos; sem olhar o teste
+X_treino, X_teste, y_treino, y_teste = train_test_split(
+    X, y, test_size=0.25, stratify=y, random_state=42
+)
+# O pré-processamento faz parte do Pipeline de cada rodada
+busca = GridSearchCV(pipeline, grade, scoring="f1", cv=cv)
+busca.fit(X_treino, y_treino)
+predicao = busca.best_estimator_.predict(X_teste)</code></pre>
+            <details>
+                <summary>Ver parâmetros e limites da comparação</summary>
+                <p>Árvore: profundidades 6 ou 12, mínimo de 5 exemplos por folha. Floresta: 80 árvores, profundidade 12
+                    ou sem limite, mínimo de 2 exemplos por folha. XGBoost: 100 árvores, profundidade 3 ou 6, taxa 0,1 e
+                    penalidade L2 igual a 1. Um único processo por modelo. Demais parâmetros são os padrões das versões
+                    registradas.</p>
+                <p>Não balanceamos artificialmente as classes. Priorizamos F1 da classe ataque. O limiar permanece no
+                    padrão dos classificadores. Uma única divisão aleatória não mede incerteza nem mudança temporal;
+                    antes de produção precisamos de validação por período, cenários atuais e custos operacionais.</p>
+            </details>
+        </section>
+        <section id="resultados">
+            <div class="sectionhead"><span class="num">04 /</span>
+                <h2>O que os dados responderam</h2>
+            </div>
+            <p>Add resultados medidos…</p>
+            <p>Precisão responde: “dos alertas, quantos eram ataques?”. Recall (sensibilidade): “dos ataques, quantos
+                encontramos?”. F1 é a média harmônica entre precisão e recall:
+                <code>2 × precisão × recall / (precisão + recall)</code>. A acurácia mede a fração total correta e pode
+                esconder erros na classe minoritária. <a
+                    href="https://scikit-learn.org/stable/modules/model_evaluation.html#classification-metrics">[5]</a>
+            </p>
+            <div class="scroll">
+                <table>
+                    <caption>Métricas no mesmo teste retido · classe positiva: ataque</caption>
+                    <thead>
+                        <tr>
+                            <th>Modelo</th>
+                            <th>Acurácia</th>
+                            <th>Precisão</th>
+                            <th>Recall</th>
+                            <th>F1</th>
+                            <th>Treino (s)</th>
+                            <th>1 conexão (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rows"></tbody>
+                </table>
+            </div>
+            <div class="two" style="margin-top:30px">
+                <div>
+                    <h3>F1, lado a lado</h3>
+                    <div id="bars"></div>
+                    <p class="small">Eixo de 0 a 100%. São resultados deste protocolo, não um ranking universal.</p>
+                </div>
+                <div>
+                    <h3>Onde cada modelo erra</h3><label for="model">Escolha o modelo</label> <select
+                        id="model"></select>
+                    <div class="matrix" id="matrix" aria-live="polite"></div>
+                    <p class="small">Linhas: classe real. Colunas: classe prevista.<br>Primeira linha normal; segunda
+                        ataque.</p>
+                </div>
+            </div>
+            <div class="two">
+                <p><strong>Falso positivo:</strong> uma conexão normal dispara um alerta. Consome tempo da equipe e, em
+                    bloqueio automático, pode interromper um serviço legítimo.</p>
+                <p><strong>Falso negativo:</strong> um ataque passa sem alerta. Pode permitir continuidade da intrusão.
+                    Seu custo depende do ativo e da ameaça; F1 não incorpora esses custos diretamente.</p>
+            </div>
+            <details>
+                <summary>Latência, ambiente e rastreabilidade</summary>
+                <div id="timing"></div>
+                <p>Tempos incluem transformação e predição em CPU; não incluem captura de tráfego, cálculo de atributos,
+                    transporte ou ação no equipamento. Trinta previsões individuais e cinco lotes após aquecimento.
+                    Reportamos mediana e percentil 95 (p95: 95% das medições ficam abaixo desse valor). Não é garantia
+                    de tempo real nem SLA.</p>
+                <pre class="code" id="environment"></pre><a href="dist/results.json" download>Baixar resultados brutos e hash
+                    SHA-256</a>
+            </details>
+        </section>
+        <section id="interpretar">
+            <h2>O que os modelos usam para decidir?</h2>
+            <p>Importância de atributos é uma medida de quanto cada variável contribuiu às divisões do modelo. Abaixo
+                estão os oito maiores pesos por modelo: redução de impureza no scikit-learn e ganho normalizado no
+                XGBoost. Os valores não são diretamente comparáveis entre algoritmos nem demonstram causalidade.
+                Variáveis correlacionadas podem dividir importância; atributos com muitas possibilidades de corte podem
+                ser favorecidos.</p>
+            <div id="importance" class="grid"></div>
+            <p>Para uma auditoria individual, ainda precisamos rastrear o caminho da árvore ou explicar a contribuição
+                dos atributos para aquela conexão. Um ranking global não explica sozinho por que um alerta específico
+                ocorreu.</p>
+        </section>
+        <section id="conclusao">
+            <div class="sectionhead"><span class="num">05 /</span>
+                <h2>Qual modelo levaríamos adiante?</h2>
+            </div>
+            <div class="winner" id="verdict">A recomendação será preenchida a partir das medições.</div>
+            <p>A floresta é uma alternativa robusta, mas a
+                combinação de muitas árvores pode encarecer cada consulta. Não declaramos que o vencedor estará pronto
+                para um roteador: vamos validar o pipeline completo, os falsos negativos por tipo de ataque e a latência
+                sob carga antes de qualquer uso operacional.</p>
+        </section>
+        <section id="reproduzir">
+            <div class="sectionhead"><span class="num">06 /</span>
+                <h2>Do artigo ao seu terminal</h2>
+            </div>
+            <pre class="code"><code>python -m venv .venv
+# Linux/macOS: source .venv/bin/activate
+# Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python notebooks/experimento.py --data dados/KDDTrain+.txt
+python -m http.server 8000 --directory dist</code></pre>
+            <p><a href="projeto.zip" download>Baixar todos os arquivos do projeto</a> · <a href="README.md">Ler o guia
+                    de reprodução</a> · <a href="apresentacao.md">Roteiro da apresentação de 5 minutos</a></p>
+            <aside class="note"><strong>Repositório GitHub: pendente.</strong>
+        </section>
+        <section id="quadro-observacao">
+            <h2>Quadro de observação</h2>
+            <div class="two">
+                <div>
+                    <h3>Duas referências analisadas</h3>
+                    <p><strong>NSL-KDD [1]:</strong> fornece um benchmark público e documentado, mas sua idade limita
+                        conclusões sobre redes atuais.</p>
+                    <p><strong>Chen e Guestrin [4]:</strong> explica o objetivo regularizado e a engenharia do XGBoost;
+                        suas vantagens gerais não substituem nossa própria comparação.</p>
+                </div>
+                <div>
+                    <h3>Três decisões do projeto</h3>
+                    <ol>
+                        <li>Usar classificação binária para tornar os custos de alerta claros.</li>
+                        <li>Selecionar configurações por F1 no treino, preservando o teste.</li>
+                        <li>Medir uma conexão e lote separadamente, com um processo por modelo.</li>
+                    </ol>
+                    <p><strong>Escolhemos não fazer:</strong> capturar tráfego real ou bloquear conexões
+                        automaticamente.</p>
+                </div>
+            </div>
+        </section>
+        <section id="referencias">
+            <h2>Referências</h2>
+            <ol>
+                <li><a href="https://www.unb.ca/cic/datasets/nsl.html">Canadian Institute for Cybersecurity —
+                        NSL-KDD</a>. Base e referência a Tavallaee et al. (2009).</li>
+                <li><a href="https://scikit-learn.org/stable/modules/tree.html">scikit-learn — Decision Trees</a>.</li>
+                <li><a
+                        href="https://scikit-learn.org/1.8/modules/generated/sklearn.ensemble.RandomForestClassifier.html">scikit-learn
+                        — RandomForestClassifier</a>.</li>
+                <li><a href="https://arxiv.org/abs/1603.02754">Chen e Guestrin (2016) — XGBoost: A Scalable Tree
+                        Boosting System</a>.</li>
+                <li><a href="https://scikit-learn.org/stable/modules/model_evaluation.html#classification-metrics">scikit-learn
+                        — Métricas de classificação</a>.</li>
+                <li><a href="https://scikit-learn.org/stable/common_pitfalls.html#data-leakage">scikit-learn — Vazamento
+                        de dados e Pipeline</a>. Vazamento ocorre quando informações indisponíveis no treino influenciam
+                    sua avaliação.</li>
+            </ol>
+        </section>
+    </main>
+    <footer><strong>PREDITOR / REDES</strong>
+        <section id="autoria" class="author-card" aria-labelledby="author-title"><img
+                src="dist/images/victor-gabriel-alves.jpg" alt="Foto de Victor Gabriel Alves" width="120" height="120"
+                loading="lazy">
+            <div><span class="eyebrow">Autoria</span>
+                <h2 id="author-title">Victor Gabriel Alves</h2>
+                <p>Estudante de Ciência da Computação, no 3º semestre, com interesse em Data Center.</p>
+                <p><a href="https://github.com/Valvezs">GitHub · Valvezs ↗</a> &nbsp; <a
+                        href="https://www.linkedin.com/in/victor-gabriel-alves-a60134199/">LinkedIn ↗</a></p>
+                <p class="author-consent">Nome, foto, mini-bio e perfis publicados com autorização explícita em
+                    19/10/2026. A autorização pode ser retirada posteriormente.</p>
+            </div>
+        </section>
+        <p>Nenhum e-mail, telefone ou endereço pessoal publicado.</p>
+        <p>Código: MIT · Texto e diagramas: CC BY 4.0 · Dataset: condições da fonte original.<br>Última revisão: 19 de
+            outubro de 2026 · Lighthouse: não executado.</p>
+    </footer>
+</body>
+
+</html>
