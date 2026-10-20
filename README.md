@@ -25,6 +25,6 @@ Referências analisadas: página NSL-KDD (fonte pública, limitações históric
 
 
 ## Autores e privacidade
-Autor: Victor Gabriel Alves — Ciência da Computação, 3º semestre, interesse em Data Center. GitHub: https://github.com/Valvezs . LinkedIn: https://www.linkedin.com/in/victor-gabriel-alves-a60134199/ . Foto fornecida e autorizada para este projeto. Consentimento explícito registrado na conversa de 19/10/2026 para publicar nome, foto, mini-bio e perfis, com possibilidade de retirada posterior. Outros integrantes devem enviar dados e autorização antes da inclusão. Contato via Issues quando configurado; sem e-mails, telefones ou endereços pessoais. Sem IPs ou tráfego confidencial.
+Autor: Victor Gabriel Alves — Ciência da Computação, 3º semestre, interesse em Data Center. GitHub: https://github.com/Valvezs . LinkedIn: https://www.linkedin.com/in/victor-gabriel-alves-a60134199/ . Foto fornecida e autorizada para este projeto. Consentimento em 19/10/2026 para publicar nome, foto, mini-bio e perfis, com possibilidade de retirada posterior. Outros integrantes devem enviar dados e autorização antes da inclusão. Contato via Issues quando configurado; sem e-mails, telefones ou endereços pessoais. Sem IPs ou tráfego confidencial.
 
 Código sob licença MIT; texto/diagramas CC BY 4.0. Base sob condições da origem e devida citação. Última revisão: 19/10/2026.
