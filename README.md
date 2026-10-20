@@ -1,6 +1,8 @@
 # Preditor de Redes
 Artigo técnico que compara Árvore de Decisão, Random Forest e XGBoost num detector de intrusão em redes, usando o conjunto de dados NSL-KDD
 
+Página publicada: https://valvezs.github.io/projeto/ 
+
 ## Reprodução
 Python 3.11+ recomendado; veja as versões exatas executadas em `dist/results.json` e `requirements.txt`. Crie um ambiente virtual e instale com `pip install -r requirements.txt`.
 
